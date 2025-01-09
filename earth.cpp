@@ -76,6 +76,8 @@ Overdrive overdrive;
 Overdrive overdrive2;
 bool odOn = false;
 
+bool first_start;
+
 bool knobMoved(float old_value, float new_value)
 {
     float tolerance = 0.005;
@@ -91,7 +93,7 @@ void updateSwitch1()  // 3 size settings, small, medium, large
 
     if (toggleValues[0] == 0) {
         setTimeScale = 1.0;
-
+        
     } else if (toggleValues[0] == 2) {
         setTimeScale = 4.0;
 
@@ -99,6 +101,7 @@ void updateSwitch1()  // 3 size settings, small, medium, large
         setTimeScale = 2.0;
 
     }
+    reverb.setTimeScale(setTimeScale);
 
 }
 
@@ -207,7 +210,7 @@ void UpdateSwitches()
             changed1 = true;
         }
     }
-    if (changed1) { // update_switches is for turning off preset
+    if (changed1 || first_start) { // update_switches is for turning off preset
         if (pswitch1[0] == true) {
             toggleValues[0] = 0;
         } else if (pswitch1[1] == true) {
@@ -228,7 +231,7 @@ void UpdateSwitches()
             changed2 = true;
         }
     }
-    if (changed2) {
+    if (changed2|| first_start) {
         if (pswitch2[0] == true) {
             toggleValues[1] = 0;
         } else if (pswitch2[1] == true) {
@@ -248,7 +251,7 @@ void UpdateSwitches()
             changed3 = true;
         }
     }
-    if (changed3) {
+    if (changed3 || first_start) {
         if (pswitch3[0] == true) {
             toggleValues[2] = 0;
         } else if (pswitch3[1] == true) {
@@ -270,12 +273,14 @@ void UpdateSwitches()
         }
     }
     // Update if preset turned off
-    if (changed4) {
+    if (changed4 || first_start) {
         for (int i=0; i<4; i++) {
             dipValues[i] = pdip[i];    // TODO Check logic here
 
         }
     }
+
+    first_start = false;
 }
     
     
@@ -284,25 +289,24 @@ void UpdateSwitches()
 void processSmoothedParameters() {
 
     // Predelay
-    fonepole(current_predelay, ppredelay, .0002f); // decrease decimal to slow down transfer
+    fonepole(current_predelay, ppredelay, .0002f);
     reverb.setPreDelay(current_predelay);
 
     // Mod Depth
     fonepole(current_moddepth, pmoddepth, .0002f);
-    reverb.setTankModDepth(current_moddepth * 6); // was * 16
-
+    reverb.setTankModDepth(current_moddepth * 8); // was * 16
 
     // Mod Rate
     fonepole(current_modspeed, pmodspeed, .0002f);
     reverb.setTankModSpeed(0.3 + current_modspeed * 15); // was * 100
 
     // Size 
-    fonepole(current_timeScale, setTimeScale, .0002f); 
-    reverb.setTimeScale(current_timeScale);
+    //fonepole(current_timeScale, setTimeScale, .0002f);  // decided not to smooth this, but leaving commented out if I change my mind
+    //reverb.setTimeScale(current_timeScale);
 
     // Swell overdrive footswitch
     if (odOn) {
-        fonepole(current_ODswell, setOD, .00002f);  // Gradually swell OD up and back down after releasing footswitch
+        fonepole(current_ODswell, setOD, .000015f);  // Gradually swell OD up and back down after releasing footswitch
         overdrive.SetDrive(current_ODswell);
         overdrive2.SetDrive(current_ODswell);
         if (current_ODswell < 0.41 && !fw2_held) {
@@ -340,7 +344,6 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
 
     // float knobValues[6]; // moved to global
     float newExpressionValues[6];
-
 
 
     // Knob 1
@@ -468,7 +471,7 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
 
             inputL = inputR = in[0][i];
  
-            // NOTE: Octave before reverb sounds better, and doing octave after reverb would require another polyoctave for second channel anyway
+            // NOTE: Octave before reverb sounds better (personal preference), and doing octave after reverb would require another polyoctave for second channel anyway
             buff[bin_counter] = inputL;
             // do calculation every 6 samples
             if (bin_counter > 4) {
@@ -481,7 +484,7 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
                 octave.update(sample);
 
                 if (effect_mode != 0)
-                    octave_mix += octave.up1() * 2.0;    // TODO May need to update parameter scaling from 0 to 1 to 1 to 20?
+                    octave_mix += octave.up1() * 2.0;
                 if (effect_mode == 2) {
                     octave_mix += octave.down1() * 2.0;
                     octave_mix += octave.down2() * 2.0;
@@ -495,7 +498,7 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
                     const auto dry_signal = buff[j];
                     // TODO Add dipswitch to enable octave out only when activated (currently mixing normal signal in)
                     float dryLevel = 0.5;
-                    if (!dipValues[2]) // Dont add in dry mix if dip3 switch is on
+                    if (!dipValues[1] || effect_mode == 2) // Dont add in dry mix if dip3 switch is on, but always add if in effect mode 2 (momentary octave)
                         mix += dryLevel * buff[j];
                     if (effect_mode != 0)
                         buff_out[j] = mix;
@@ -520,10 +523,8 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
 
             }
 
-  
             // Calculate Reverb
             reverb.process(reverb_in, reverb_in);
-
 
             // Momentary Overdrive Swell
             float reverbLeftOut = reverb.getLeftOutput();  
@@ -532,20 +533,16 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
             float effectRightOut = 0.0;
 
             if (odOn) {
-            // NOTE Im incorrectly using the same overdrive instance on both channels..is that what's making the cool sound??
-            //  Not sure what the difference is..listen closer
-            //  Really cool sound when the low octave is overdriven, like epic sci fi blade runner
-                effectLeftOut = overdrive.Process(reverbLeftOut*0.25) *  (1.0 - (current_ODswell * current_ODswell*2.8- .1296)); // reduce volume as od drive goes up
-                if (!dipValues[1]) 
-                    effectRightOut = overdrive2.Process(reverbRightOut*0.25) *  (1.0 - (current_ODswell * current_ODswell*2.8 - .1296));
-                else 
-                    effectRightOut = overdrive.Process(reverbRightOut*0.25) *  (1.0 - (current_ODswell * current_ODswell*2.8 - .1296));
+                // Really cool sound when the low octave is overdriven, like epic sci fi blade runner
+                effectLeftOut = overdrive.Process(reverbLeftOut*0.25) *  (1.0 - (current_ODswell * current_ODswell * 2.8 - 0.1296)); // reduce volume as od drive goes up (otherwise way too loud)
+                effectRightOut = overdrive2.Process(reverbRightOut*0.25) *  (1.0 - (current_ODswell * current_ODswell * 2.8 - 0.1296));
+              
             } else {
                 effectLeftOut = reverb.getLeftOutput();
                 effectRightOut = reverb.getRightOutput();
             }
 
-            float leftOutput = inputL * dryMix + effectLeftOut * wetMix * 0.2;  // 0.1 is for overall volume reduction on reverb
+            float leftOutput = inputL * dryMix + effectLeftOut * wetMix * 0.2;  // 0.2 is for overall volume reduction on reverb
             float rightOutput = inputR * dryMix + effectRightOut * wetMix* 0.2;
 
             out[0][i] = leftOutput;
@@ -646,7 +643,7 @@ int main(void)
 
     reverb.setSampleRate(samplerate);
 
-    reverb.setTimeScale(1.0);
+    reverb.setTimeScale(4.0);
     reverb.setPreDelay(0.0);
 
     reverb.setInputFilterLowCutoffPitch(10. * inputDampLow);
@@ -658,7 +655,7 @@ int main(void)
     reverb.setTankFilterHighCutFrequency(10. - (10. * reverbDampHigh));
     reverb.setTankModSpeed(1.0);
     reverb.setTankModDepth(0.5);
-    reverb.setTankModShape(0.5);
+    reverb.setTankModShape(0.5); // <-- currently not controllable, maybe use dipswitch for different shape
     reverb.clear();
 
     // Initialize buffers for polyoctave to 0
@@ -680,11 +677,11 @@ int main(void)
     damp.Init(hw.knob[Funbox::KNOB_6], 0.0f, 1.0f, ::daisy::Parameter::LINEAR);
     expression.Init(hw.expression, 0.0f, 1.0f, Parameter::LINEAR); 
 
-    pdamp = 0.5;
-    pmix = 0.5;
-    pdecay = 0.5;
-    pmoddepth = 0.3;
-    pmodspeed = 0.3;
+    pdamp = 0.0;
+    pmix = 0.0;
+    pdecay = 0.0;
+    pmoddepth = 0.0;
+    pmodspeed = 0.0;
     ppredelay = 0.0;
 
     // For parameter smoothing
@@ -724,6 +721,7 @@ int main(void)
     // index for midi_control: 0-5 knobs, 6 expression, 7-9 switch1, 10-12 switch2, 13-15 switch 3
     //                         TODO Dipswitches over midi 16-17 Dip1, 17-18 Dip2, 19-20 Dip3, 21-22 Dip4,
 
+    first_start = true;
 
     // Init the LEDs and set activate bypass
     led1.Init(hw.seed.GetPin(Funbox::LED_1),false);
@@ -732,7 +730,6 @@ int main(void)
 
     led2.Init(hw.seed.GetPin(Funbox::LED_2),false);
     led2.Update();
-
 
     hw.InitMidi();
     hw.midi.StartReceive();
