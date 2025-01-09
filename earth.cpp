@@ -187,7 +187,7 @@ void UpdateButtons()
     {
         fw2_held = false;
         freeze = false;
-        setOD = 0.0; // TODO Experiment with good minimal setting here
+        setOD = 0.4; // TODO Experiment with good minimal setting here
         effect_on_momentary = false;
     }
 
@@ -302,10 +302,10 @@ void processSmoothedParameters() {
 
     // Swell overdrive footswitch
     if (odOn) {
-        fonepole(current_ODswell, setOD, .00001f);  // Gradually swell OD up and back down after releasing footswitch
+        fonepole(current_ODswell, setOD, .00002f);  // Gradually swell OD up and back down after releasing footswitch
         overdrive.SetDrive(current_ODswell);
         overdrive2.SetDrive(current_ODswell);
-        if (current_ODswell < 0.01 && !fw2_held) {
+        if (current_ODswell < 0.41 && !fw2_held) {
             odOn = false; // Turn od off after releasing footswitch and drive drops back down
         }
     }
@@ -481,7 +481,7 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
                 octave.update(sample);
 
                 if (effect_mode != 0)
-                    octave_mix += octave.up1() * 4.0;    // TODO May need to update parameter scaling from 0 to 1 to 1 to 20?
+                    octave_mix += octave.up1() * 2.0;    // TODO May need to update parameter scaling from 0 to 1 to 1 to 20?
                 if (effect_mode == 2) {
                     octave_mix += octave.down1() * 2.0;
                     octave_mix += octave.down2() * 2.0;
@@ -493,8 +493,10 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
                     float mix = eq2(eq1(out_chunk[j]));
 
                     const auto dry_signal = buff[j];
+                    // TODO Add dipswitch to enable octave out only when activated (currently mixing normal signal in)
                     float dryLevel = 0.5;
-                    mix += dryLevel * buff[j];
+                    if (!dipValues[2]) // Dont add in dry mix if dip3 switch is on
+                        mix += dryLevel * buff[j];
                     if (effect_mode != 0)
                         buff_out[j] = mix;
                     else 
@@ -524,23 +526,27 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
 
 
             // Momentary Overdrive Swell
-            float reverbLeftOut = reverb.getLeftOutput() * 0.7;  // 0.7 is overall volume reduction for more even mix
-            float reverbRightOut = reverb.getRightOutput() * 0.7;
+            float reverbLeftOut = reverb.getLeftOutput();  
+            float reverbRightOut = reverb.getRightOutput();
             float effectLeftOut = 0.0;
             float effectRightOut = 0.0;
 
             if (odOn) {
-                // NOTE Im incorrectly using the same overdrive instance on both channels..is that what's making the cool sound??
-                effectLeftOut = overdrive.Process(reverbLeftOut) * 0.08 * (1.0 - current_ODswell); // reduce volume as od drive goes up
-                effectRightOut = overdrive2.Process(reverbRightOut) * 0.08 * (1.0 - current_ODswell);
-                //effectRightOut = overdrive.Process(reverbRightOut) * 0.08 * (1.0 - current_ODswell);
+            // NOTE Im incorrectly using the same overdrive instance on both channels..is that what's making the cool sound??
+            //  Not sure what the difference is..listen closer
+            //  Really cool sound when the low octave is overdriven, like epic sci fi blade runner
+                effectLeftOut = overdrive.Process(reverbLeftOut*0.25) *  (1.0 - (current_ODswell * current_ODswell*2.8- .1296)); // reduce volume as od drive goes up
+                if (!dipValues[1]) 
+                    effectRightOut = overdrive2.Process(reverbRightOut*0.25) *  (1.0 - (current_ODswell * current_ODswell*2.8 - .1296));
+                else 
+                    effectRightOut = overdrive.Process(reverbRightOut*0.25) *  (1.0 - (current_ODswell * current_ODswell*2.8 - .1296));
             } else {
                 effectLeftOut = reverb.getLeftOutput();
                 effectRightOut = reverb.getRightOutput();
             }
 
-            float leftOutput = inputL * dryMix + effectLeftOut * wetMix;  // 0.8 is for overall volume reduction on reverb
-            float rightOutput = inputR * dryMix + effectRightOut * wetMix;
+            float leftOutput = inputL * dryMix + effectLeftOut * wetMix * 0.2;  // 0.1 is for overall volume reduction on reverb
+            float rightOutput = inputR * dryMix + effectRightOut * wetMix* 0.2;
 
             out[0][i] = leftOutput;
             out[1][i] = rightOutput;
@@ -662,9 +668,9 @@ int main(void)
     }
 
     overdrive.Init();
-    overdrive.SetDrive(0.1); // 0.6 sounds cool but is alot
+    overdrive.SetDrive(0.4);
     overdrive2.Init();
-    overdrive2.SetDrive(0.1); // 0.6 sounds cool but is alot
+    overdrive2.SetDrive(0.4);
 
     predelay.Init(hw.knob[Funbox::KNOB_1], 0.0f, 1.0f, ::daisy::Parameter::LINEAR); 
     mix.Init(hw.knob[Funbox::KNOB_2], 0.0f, 1.0f, ::daisy::Parameter::LINEAR);
@@ -683,8 +689,8 @@ int main(void)
 
     // For parameter smoothing
     current_predelay = current_moddepth = current_modspeed = current_freezeDecay = 0.0;
-    current_ODswell= 0.0;
-    setOD = 0.1;
+    current_ODswell= 0.4;
+    setOD = 0.4;
 
     switch1[0]= Funbox::SWITCH_1_LEFT;
     switch1[1]= Funbox::SWITCH_1_RIGHT;
