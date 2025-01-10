@@ -2,9 +2,10 @@
 
 Earth is a digital plate reverb and octave pedal using the Dattorro algorithm.
 
-![app](https://github.com/GuitarML/Funbox/blob/main/software/images/jupiter_infographic.jpg)
+![app](https://github.com/GuitarML/Funbox/blob/main/software/images/earth_infographic.jpg)
 
-The Reverb is a modified version of the Dattorro implementation in VCV rack Plateau. The polyoctave is from:
+The Reverb is a modified version of the Dattorro implementation in VCV rack Plateau. 
+The polyoctave effect is from: https://github.com/schult/terrarium-poly-octave
 
 ## Controls
 
@@ -18,9 +19,9 @@ The Reverb is a modified version of the Dattorro implementation in VCV rack Plat
 | Ctrl 6 | Filter | Left of center is high cut, right of center is low cut |
 | 3-Way Switch 1 | Reverb Size | Left=Small, Center=Med, Right=Big |
 | 3-Way Switch 2 | Octave  | Left=None, Center=Octave Up, Right=Octave Up and Down  |
-| 3-Way Switch 3 | Footswitch Action | Left=Freeze, Center=Clear, Right=Momentary Octave | 
+| 3-Way Switch 3 | Footswitch Action | Left=Momentary Freeze, Center=Momentary Overdrive, Right=Momentary Octave | 
 | Dip Switch 1 | Disable Input Diffusion | Turn on to disable the input diffusion |
-| Dip Switch 2 |  |  |
+| Dip Switch 2 | Octave only mode | Doesn't allow dry signal to the reverb (only octave) when in an octave mode |
 | Dip Switch 3 |  |  |
 | Dip Switch 4 |  |  |
 | FS 1 | Bypass/Engage |  |
