@@ -443,15 +443,15 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
 
     if (knobMoved(pdamp, vdamp)) {
         // Can also use tank cut functions, try with input cuts and see what sounds better
-        //if (vdamp < 0.5) {
-        //    float reverbDampHigh = vdamp * 2.0;
-        //    reverb.setInputFilterHighCutoffPitch(8. * reverbDampHigh); // 0 to 8
-        //} else {
-        //    float reverbDampLow = (vdamp - 0.5) * 2.0;
-        //    reverb.setInputFilterLowCutoffPitch(8. * reverbDampLow);  // 0 to 8
-        //}
-
-        reverb.setInputFilterHighCutoffPitch(10. - (7. * vdamp)); // LP Filter on input works best for me
+        if (vdamp < 0.5) {
+            float reverbDampHigh = vdamp * 2.0;
+            reverb.setInputFilterHighCutoffPitch(7. * reverbDampHigh + 3); // 3 to 10
+            //reverb.setTankFilterHighCutFrequency(7. * reverbDampHigh + 3); // 3 to 10
+        } else {
+            float reverbDampLow = (vdamp - 0.5) * 2.0;
+            reverb.setInputFilterLowCutoffPitch(9. * reverbDampLow);  // 0 to 9
+            //reverb.setTankFilterLowCutFrequency(9. * reverbDampLow);  // 0 to 9
+        }
         pdamp = vdamp;
 
     }
