@@ -7,10 +7,8 @@
 
 #include "Dattorro/Dattorro.hpp"
 
-//#include "Util/audio_utilities.h"
 #include <q/support/literals.hpp>
 #include <q/fx/biquad.hpp>
-//#include "../Util/EffectState.h"
 #include "Util/Multirate.h"
 #include "Util/OctaveGenerator.h"
 namespace q = cycfi::q;
@@ -542,8 +540,8 @@ static void AudioCallback(AudioHandle::InputBuffer  in,
                 effectRightOut = reverb.getRightOutput();
             }
 
-            float leftOutput = inputL * dryMix + effectLeftOut * wetMix * 0.2;  // 0.2 is for overall volume reduction on reverb
-            float rightOutput = inputR * dryMix + effectRightOut * wetMix* 0.2;
+            float leftOutput = inputL * dryMix + effectLeftOut * wetMix * 0.4;  // 0.4 is for overall volume reduction on reverb
+            float rightOutput = inputR * dryMix + effectRightOut * wetMix* 0.4;
 
             out[0][i] = leftOutput;
             out[1][i] = rightOutput;

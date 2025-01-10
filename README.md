@@ -4,8 +4,8 @@ Earth is a digital plate reverb and octave pedal using the Dattorro algorithm.
 
 ![app](https://github.com/GuitarML/Funbox/blob/main/software/images/earth_infographic.jpg)
 
-The Reverb is a modified version of the Dattorro implementation in VCV rack Plateau. 
-The polyoctave effect is from: https://github.com/schult/terrarium-poly-octave
+The Reverb is a modified version of the Dattorro implementation in [VCV rack Plateau](https://github.com/ValleyAudio/ValleyRackFree/tree/main/src/Plateau). 
+The polyoctave effect is from: [Terrarium-Poly-Octave](https://github.com/schult/terrarium-poly-octave).
 
 ## Controls
 
